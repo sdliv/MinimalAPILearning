@@ -1,8 +1,17 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Minimal.Api;
 
 var builder = WebApplication.CreateBuilder(args);
-//Configure our service
+// Service Registration Starts Here
+builder.Services.AddSingleton<PeopleService>();
+builder.Services.AddSingleton<GuidGenerator>();
+
+// Service Registration Stops Here
+
+// Configurating Middleware, order matters!
 var app = builder.Build();
+// Middleware registration starts here.
 
 // Synchronous examples
 app.MapGet("get-example", () => "Hello from GET");
@@ -55,4 +64,76 @@ app.MapGet("books/{isbn:length(13)}", (string isbn) =>
     return $"ISBN was: {isbn}";
 });
 
+app.MapGet("people/search", (string? searchTerm, PeopleService peopleService) =>
+{
+    if (searchTerm is null)
+    {
+        return Results.NotFound();
+    }
+
+    var results = peopleService.Search(searchTerm);
+    return Results.Ok(results);
+});
+
+app.MapGet("mix/{routeParam}", (
+    // Implicit and Explicit approach mixed
+    string routeParam,
+    [FromQuery(Name = "query")] int queryParam,
+    GuidGenerator guidGenerator,
+    [FromHeader(Name = "Accept-Encoding")] string encoding) =>
+{
+    return $"{routeParam} {queryParam} {guidGenerator.NewGuild} {encoding}";
+});
+
+
+// Get item from the post request body.
+
+app.MapPost("people", (Person person) =>
+{
+    return Results.Ok(person);
+});
+
+
+app.MapGet("httpcontext-1", async context =>
+{
+    await context.Response.WriteAsync("Hello from HttpContext 1");
+});
+
+app.MapGet("httpcontext-2", async (HttpContext context) =>
+{
+    await context.Response.WriteAsync("Hello from HttpContext 2");
+});
+
+app.MapGet("http", async (HttpRequest request, HttpResponse response) =>
+{
+    var queries = request.QueryString.Value;
+    await response.WriteAsync($"Hello from httpcontext. Queries were: {queries}");
+});
+
+
+// Access to ClaimsPrinicpal
+
+app.MapGet("claims", (ClaimsPrincipal user) =>
+{
+    
+});
+
+
+
+app.MapGet("cancel", (CancellationToken cancel) =>
+{
+    return Results.Ok();
+});
+
+
+app.MapGet("map-point", (MapPoint point) =>
+{
+    return Results.Ok(point);
+});
+
+app.MapPost("map-point", (MapPoint point) =>
+{
+    return Results.Ok(point);
+});
+// Registration of middleware stops here.
 app.Run();
